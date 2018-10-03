@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+
+<body>
+<input type="text" id="text">
+<input type="submit" value="send" onclick="send()">
+</body>
+<script>
+    var msg=document.getElementById("text");
+    var wsServer = 'ws://localhost:8083';
+    var webSocekte=new WebSocket(wsServer);
+    webSocekte.onopen=function (evt) {
+        msg.innerHTML="The connection is open";
+    };
+    webSocekte.onmessage=function (evt) {
+        console.log(evt);
+        alert(evt.data);
+        }
+    webSocekte.onclose=function(evt){
+        alert("连接关闭");
+    }
+    function  send() {
+        var text=document.getElementById("text").value;
+        webSocekte.send(text);
+
+    }
+
+</script>
+</html>
