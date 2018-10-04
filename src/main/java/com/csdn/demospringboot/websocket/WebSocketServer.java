@@ -1,25 +1,45 @@
 package com.csdn.demospringboot.websocket;
 
+import com.csdn.demospringboot.dao.UserDao;
+import com.csdn.demospringboot.dto.Message;
+import com.csdn.demospringboot.entity.User;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.timeout.IdleStateEvent;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.yeauty.annotation.*;
 import org.yeauty.pojo.Session;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ServerEndpoint(prefix = "netty-websocket")
 @Component
-public class WebSocketServer {
+public class WebSocketServer  {
 
+    private static Map<String,Session> userMap=new ConcurrentHashMap<>();
+    private static  ObjectMapper objectMapper=new ObjectMapper();
+    @Autowired
+    private UserDao userDao;
     @OnOpen
     public void onOpen(Session session, HttpHeaders headers) throws IOException {
-        System.out.println("new connection");
+
     }
 
     @OnClose
     public void onClose(Session session) throws IOException {
-        System.out.println("one connection closed");
+        Iterator<String> keySet=userMap.keySet().iterator();
+        String customerid=null;
+        while(keySet.hasNext()){
+            String result=keySet.next();
+
+            if((customerid=result.split("-")[0]).equals(session.id().toString())){
+              userMap.remove(result);
+            }
+        }
     }
 
     @OnError
@@ -28,9 +48,27 @@ public class WebSocketServer {
     }
 
     @OnMessage
-    public void OnMessage(Session session, String message) {
-        System.out.println(message);
-        session.sendText("Hello Netty!");
+    public void OnMessage(Session session, String message) throws IOException {
+       Message s=objectMapper.readValue(message,Message.class);
+       //主管发消息给客服
+           userMap.put(session.id()+"-"+s.getFrom()+"-"+s.getType(),session);//主管id
+           Iterator<String> keySet=userMap.keySet().iterator();
+           String customerid=null;
+           while(keySet.hasNext()){
+               String result1=keySet.next();
+               String []result=result1.split("-");
+               if((customerid=result[1]).equals(s.getTo())&&!s.getType().equals(result[2])){
+                   Session sessionc=userMap.get(result1);
+                   if(sessionc!=null&&sessionc.isOpen()){
+                       sessionc.sendText(s.getText());
+                   }
+               }
+           }
+
+
+
+
+
     }
 
     @OnBinary
